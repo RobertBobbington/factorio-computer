@@ -5,9 +5,9 @@ from exceptions import ParseFileError, AsmSyntaxError
 
 class NumericLabel:
     """A numeric label is a single digit label from the range 0 to 9. It is a local label."""
-    def __init__(self, digit, pc_adr, file_line_number):
+    def __init__(self, digit, inst_index, file_line_number):
         self.digit = digit
-        self.pc_adr = pc_adr
+        self.inst_index = inst_index
         self.was_referenced = False
         self.file_line_number = file_line_number
 
@@ -25,13 +25,13 @@ def find_numeric_labels(labels, digit, pc_adr):
     for label in labels:
         assert isinstance(label, NumericLabel)
         if label.digit == digit:
-            if prev_label is not None and prev_label.pc_adr > label.pc_adr:
+            if prev_label is not None and prev_label.inst_index > label.inst_index:
                 error_txt = "List of numeric labels not in order (by address). " \
                             "Previous: [{}: {}], current: [{}: {}]" \
-                            .format(prev_label.digit, prev_label.pc_adr, label.digit, label.pc_adr)
+                            .format(prev_label.digit, prev_label.inst_index, label.digit, label.inst_index)
                 raise ParseFileError(error_txt)
 
-            if label.pc_adr <= pc_adr:
+            if label.inst_index <= pc_adr:
                 back = label
             else:
                 forward = label

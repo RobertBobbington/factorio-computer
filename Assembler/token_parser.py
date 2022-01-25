@@ -8,6 +8,7 @@ import label as lb
 from instruction import Instruction
 from macro_dependencies_checker import check_dependencies
 from exceptions import show_syntax_error, AsmSyntaxError
+from opcode_map import opcodes
 
 
 def token_parser(tokens):
@@ -40,7 +41,7 @@ def token_parser(tokens):
         elif first_token.text.lower() == "#endm":
             # finish macro definition
             if active_macro is None:
-                show_syntax_error("Invalid macro end, no matching macro declaration",first_token)
+                show_syntax_error("Invalid macro end, no matching macro declaration", first_token)
             # Note, index given to macro is the exclusive upper index, so increase index by one
             active_macro.token_line_end = i + 1
             macros[active_macro.name] = active_macro
@@ -93,7 +94,7 @@ def token_parser(tokens):
                     for token in lines:
                         new_token = token.copy()
                         line.append(new_token)
-                        if new_token.text.startswith("$"):
+                        if new_token.text.startswith("@"):
                             try:
                                 num = int(new_token.text[1:])
                                 if num > len(params) - 1 or num < 0:
@@ -148,7 +149,9 @@ def token_parser(tokens):
                         show_syntax_error("Misplaced label colon", t)
                     found_label = True
                     label = line[0]
-                    label_target = len(instructions)  # Target is absolute signed PC address
+                    label_target = len(instructions)
+                    # Target is absolute signed PC address
+                    # #No, is index of instruction list
                     if lb.is_numeric_label(label.text):
                         label_num = lb.NumericLabel(int(label.text), label_target, label.file_line_num)
                         numeric_labels.append(label_num)
@@ -167,6 +170,47 @@ def token_parser(tokens):
         instruction = Instruction(opcode, operands)
         instructions.append(instruction)
 
+    # build the PC addresses
+
+    # Need to create a list of last variables that may have a mem right that will be read by a subsequent instruction
+    # this is the dependant_operands list. This list contains the mem write operands.
+
+    # First thing that must be done for each new instruction is check if the mem read instructions are in the
+    # dependant_operands list. If so, the PC must be advanced to the "instruction length" of that instruction opcode
+    # minus the number of instructions between the two dependant instructions... or just the "instruction length"
+    # plus the PC at the write instruction.
+    dependant_insts = list()
+    current_inst_PC = 0
+
+    for inst in instructions:
+        mem_read_insts = inst.get_ram_reads()
+
+        current_inst_PC += 1
+        no_longer_dep = []
+        for dep_inst in dependant_insts:
+            opcode_def = dep_inst.opcode
+            past_inst_length = dep_inst.opcode.length
+            past_write_inst = dep_inst.get_ram_write()
+            branch_flag_padding = 0
+
+            if inst.opcode.reads_flags and dep_inst.opcode.sets_flags:
+                branch_flag_padding = 2
+            # TODO: Custom code for LOAD opcode. Does not need to be force padded when using immediate values
+
+            if dep_inst.opcode.force_padding\
+                    or past_write_inst in mem_read_insts\
+                    or branch_flag_padding:
+                if current_inst_PC < dep_inst.pc_adr + past_inst_length + branch_flag_padding:
+                    current_inst_PC = dep_inst.pc_adr + past_inst_length + branch_flag_padding
+                no_longer_dep.append(dep_inst)
+
+        for i in no_longer_dep:
+            dependant_insts.remove(i)
+
+        inst.pc_adr = current_inst_PC
+        dependant_insts.append(inst)
+
+    #
     # replace each branch label with the program address
     unused_labels = set(symbolic_labels.keys())
     for i, inst in enumerate(instructions):
@@ -174,7 +218,7 @@ def token_parser(tokens):
             op = operand.text
             if op in symbolic_labels:
                 unused_labels.discard(op)
-                operand.text = symbolic_labels[op]
+                operand.text = str(instructions[(symbolic_labels[op])].pc_adr)
             elif len(op) == 2 and op[0].isdecimal() and op[1] in ["b", "f"]:
                 label_target = None
                 try:
@@ -184,8 +228,9 @@ def token_parser(tokens):
                         label_target = lb.find_forward_label(numeric_labels, int(op[0]), i)
                 except AsmSyntaxError as e:
                     show_syntax_error(e.args[0], operand)
-                operand.text = str(label_target.pc_adr)
+                operand.text = str(instructions[label_target.inst_index].pc_adr)
                 label_target.was_referenced = True
+        # print(i, ": ", inst.opcode.text)
 
     for numeric_label in numeric_labels:
         if not numeric_label.was_referenced:
@@ -194,7 +239,6 @@ def token_parser(tokens):
     if len(unused_labels) > 0:
         s = "" if len(unused_labels) == 1 else "s"
         print("Warning: Unused label{}: {}".format(s, ", ".join(unused_labels)), file=sys.stderr)
-
     # for inst in instructions:
     #     print(inst.opcode, inst.operands)
 
@@ -205,6 +249,7 @@ def token_parser(tokens):
         fake_token = Token("HLTG", TokenType.OPCODE, last_line + 1, fake_raw_inst, 0, fake_token_line)
         fake_token_line.append(fake_token)
         halt_successfully = Instruction(fake_token, list())
+        halt_successfully.pc_adr = 10 + instructions[-1:][0].pc_adr
         instructions.append(halt_successfully)
 
     return instructions

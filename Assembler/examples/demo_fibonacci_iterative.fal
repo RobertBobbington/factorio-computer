@@ -1,24 +1,27 @@
 ; Fibonacci number generator, iterative
 
-#def f_0 0
-#def f_1 1
-#def mem_start 2
-#def end_index 64
+; num[0] =1
+; num[1] =1
+; n = 2
+; fib_loop:
+; num[n] = num[n-1] + num[n-2]
+; n++
+; if n < 20; branch fib_loop
 
-; setup
-; insert the two first numbers into memory
-MOV R3, 0 ; mem index
-MOV R0, 0 ; 1st number
-STORE R0, [0]
-MOV R0, 1 ; 2nd number
-STORE R0, [1]
-MOV R1, f_1 ; prev
-MOV R2, f_0 ; 2nd prev
+#def end_index 32
+STOR 1, 6 ; mem index
+STOR 2, 0 ; addition target
+STOR 3, 0 ; working variable
+STOR 4, 1
+STOR 5, 1
 fib_loop:
-ADD R0, R1, R2 ; 3rd number
-MOV R2, R1
-MOV R1, R0
-STORE R0, [R3, mem_start]
-INC R3
-CMP R3, end_index
+LOAD $2, [$1, -2]
+LOAD $3, [$1, -1]
+ADD $2, $2, $3
+STOR $1, $2
+ADD $1, $1, 1
+CMP $1, end_index
 BN fib_loop
+STOR 1, 0
+STOR 2, 0
+HLT

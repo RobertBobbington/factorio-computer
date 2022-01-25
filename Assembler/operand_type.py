@@ -4,8 +4,8 @@ from enum import Enum, auto
 
 
 class OperandType(Enum):
-    REGISTER = auto()
+    WRITE_RAM = auto()
     IMMEDIATE = auto()
-    REG_OR_IMM_OR_BOTH = auto()
-    REG_OR_IMM = auto()
-    REG_OR_LABEL = auto()
+    RAM_OR_IMM_OR_BOTH = auto()
+    RAM_OR_IMM = auto()
+    RAM_OR_LABEL = auto()

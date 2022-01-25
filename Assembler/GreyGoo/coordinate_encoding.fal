@@ -10,10 +10,6 @@ HLT
 PC $1
 B decode_coord
 
-
-
-
-
 ; ENCODE_COORDINATES FUNCTION
 ; return PC: $1
 ; inputs:    $2 <-- x

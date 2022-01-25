@@ -32,11 +32,13 @@ def main():
     with open(file_preprocessed, "w") as f:
         for inst in instructions:
             assert isinstance(inst, Instruction)
-            line = inst.opcode.text.ljust(5) + " "
+            line = str(inst.pc_adr).ljust(5) + inst.opcode.name.ljust(5) + " "
             line += " ".join([str(_.text) for _ in inst.operands])
             f.write(line + "\n")
-    
-    combinator_signals = inst_to_signals(instructions)
+
+    combinator_signals = list()
+    for inst in instructions:
+        combinator_signals.append(inst.get_signals())
 
     # create blueprint
 

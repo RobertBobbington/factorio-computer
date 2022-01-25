@@ -1,0 +1,83 @@
+{
+    "entities": [
+        {
+            "entity_number": 1,
+            "name": "nixie-tube-small",
+            "position": {
+                "x": 0.5,
+                "y": 0.5
+            }
+        },
+        {
+            "entity_number": 2,
+            "name": "nixie-tube-small",
+            "position": {
+                "x": 1.5,
+                "y": 0.5
+            },
+            "control_behavior": {
+                "circuit_condition": {
+                    "first_signal": {
+                        "type": "item",
+                        "name": "copper-ore"
+                    },
+                    "constant": -2147483648,
+                    "comparator": "≥"
+                }
+            }
+        },
+        {
+            "entity_number": 3,
+            "name": "constant-combinator",
+            "position": {
+                "x": 2.5,
+                "y": 0.5
+            }
+        },
+        {
+            "entity_number": 4,
+            "name": "decider-combinator",
+            "position": {
+                "x": 4,
+                "y": 0.5
+            },
+            "direction": 2,
+            "control_behavior": {
+                "decider_conditions": {
+                    "first_signal": {
+                        "type": "item",
+                        "name": "copper-ore"
+                    },
+                    "second_signal": {
+                        "type": "virtual",
+                        "name": "signal-P"
+                    },
+                    "comparator": "=",
+                    "output_signal": {
+                        "type": "virtual",
+                        "name": "signal-everything"
+                    },
+                    "copy_count_from_input": true
+                }
+            }
+        },
+        {
+            "entity_number": 5,
+            "name": "small-lamp",
+            "position": {
+                "x": 5.5,
+                "y": 0.5
+            },
+            "control_behavior": {
+                "circuit_condition": {
+                    "first_signal": {
+                        "type": "virtual",
+                        "name": "signal-P"
+                    },
+                    "constant": 0,
+                    "comparator": "≠"
+                }
+            }
+        }
+    ]
+}

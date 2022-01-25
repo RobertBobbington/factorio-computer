@@ -20,9 +20,7 @@ class Blueprint:
         self.bp_dict = self.json_dict["blueprint"]
 
         # connection entity ids
-        self.prev_index_entity = None
-        self.prev_PC_entity = None
-        self.prev_OUT_entity = None
+        self.prev_entity = None
 
         # constant combinators, will later be populated with signals
         self.constant_combinators = list()
@@ -43,7 +41,7 @@ class Blueprint:
         self.entities = self.bp_dict["entities"]
 
         # generate stone wall entities
-        stone_walls_positions = [(-4, -1), (-4, 0), (-3, -1), (2, -1), (3, 0), (3, -1)]
+        stone_walls_positions = [(-1, -1), (-1, 0), (0, -1), (5, -1), (6, 0), (6, -1)]
         for x, y in stone_walls_positions:
             ent_n = next(self.e_num)
             stone_wall = generate_entity(ent_n, "stone-wall", x, y)
@@ -51,10 +49,8 @@ class Blueprint:
             self.entities.append(stone_wall)
 
         # generate initial lamp entities (input and output connections)
-        self.prev_PC_entity = generate_entity(next(self.e_num), "small-lamp", -1, -2)
-        self.prev_OUT_entity = generate_entity(next(self.e_num), "small-lamp", 2, -2)
-        self.entities.append(self.prev_PC_entity)
-        self.entities.append(self.prev_OUT_entity)
+        self.prev_entity = generate_entity(next(self.e_num), "small-lamp", 4, -2)
+        self.entities.append(self.prev_entity)
 
     def generate_rom_entities(self, number_of_lines):
         if number_of_lines < 0:
@@ -68,31 +64,29 @@ class Blueprint:
         while i < number_of_lines:
             # code here
             std_entities = json.loads(single_line_json)["entities"]
-            arith, lamp, const_comb, decider = std_entities
+
+            nixie = std_entities[1]
+            const_comb = std_entities[2]
+            decider = std_entities[3]
+            lamp = std_entities[4]
+
             for e in std_entities:
                 e["entity_number"] = next(self.e_num)
                 e["position"]["y"] = i
             self.constant_combinators.append(const_comb)
 
             # manage connections
-            # red circuit
-            if self.prev_index_entity is not None:
-                entities_connect(arith, self.prev_index_entity, "red", "1", "2")
-            self.prev_index_entity = arith
+            # PC in on green and control signals out on red
+            if self.prev_entity is not None:
+                prev_side = "1" if i == 0 else "2"
+                entities_connect(decider, self.prev_entity, "green", "1", "1")
+                entities_connect(decider, self.prev_entity, "red", "2", prev_side)
+            self.prev_entity = decider
 
-            entities_connect(arith, lamp, "red", "1", "1")
-            entities_connect(lamp, decider, "red", "1", "1")
+            # Connections within the single line
+            entities_connect(nixie, const_comb, "red", "1", "1")
             entities_connect(const_comb, decider, "red", "1", "1")
-
-            # PC circuit
-            entities_connect(lamp, self.prev_PC_entity, "green", "1", "1")
-            self.prev_PC_entity = lamp
-            entities_connect(lamp, decider, "green", "1", "1")
-
-            # ROM out circuit
-            prev_side = "1" if i == 0 else "2"
-            entities_connect(decider, self.prev_OUT_entity, "green", "2", prev_side)
-            self.prev_OUT_entity = decider
+            entities_connect(decider, lamp, "green", "2", "1")
 
             self.entities += std_entities
             i += 1

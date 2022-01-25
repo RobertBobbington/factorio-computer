@@ -189,9 +189,9 @@ Syntax:
 Example:
 ```
 #macro push_three 3
-PUSH $0
-PUSH $1
-PUSH $2
+PUSH @0
+PUSH @1
+PUSH @2
 #endm
 
 push_three R1 R2 PC

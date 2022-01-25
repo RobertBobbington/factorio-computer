@@ -42,13 +42,19 @@ def tokenize_file(filename):
             delimiters = "[],"
 
             no_comment = line.split(";", 1)[0]
+
             if len(no_comment.split()) == 0:
                 continue
+
+            # This is a hack to fix the issue that the last token is not added to the list if there is no whitespace
+            # at the end of the file.
+            if no_comment[-1:] != '\n':
+                no_comment += '\n'
 
             found_opcode = False
             start_token = -1  # sentinel value -1: no start token index
             for index, c in enumerate(no_comment):
-                if c.isspace() or c in delimiters or c == ":":
+                if c.isspace() or c in delimiters or c == ":" or c == no_comment[-1]:
                     if start_token != -1:
                         token_txt = no_comment[start_token:index]
                         token_type = TokenType.OPERAND
@@ -94,7 +100,7 @@ def tokenize_file(filename):
 
 
 def _test():
-    verbose_out = False
+    verbose_out = True
 
     print("Running test on tokenizer...")
 
@@ -102,26 +108,26 @@ def _test():
 
     test_lines = [
         "#def       end_index 64 ; some comment or some such",
-        "lb: STORE $0, [stack_reg]",
-        "STORE R0, [R3, mem_start] ; another comment",
-        "1: MOV R2, 42"
+        "lb: MOV [stack_reg], $1",
+        "MOV [$3, mem_start], $1 ; another comment",
+        "1: MUL [$1, 8], 42"
     ]
 
     expected_output = [
         ["#def", "end_index", "64"],
-        ["lb", ":", "STORE", "$0", ",", "[", "stack_reg", "]"],
-        ["STORE", "R0", ",", "[", "R3", ",", "mem_start", "]"],
-        ["1", ":", "MOV", "R2", ",", "42"]
+        ["lb", ":", "MOV", "[", "stack_reg", "]", ",", "$1"],
+        ["MOV", "[", "$3", ",", "mem_start", "]", ",", "$1"],
+        ["1", ":", "MUL", "[", "$1", ",", "8", "]", ",", "42"]
     ]
 
     expected_types = [
         [TokenType.OPCODE, TokenType.OPERAND, TokenType.OPERAND],
-        [TokenType.LABEL_SYMBOLIC, TokenType.LABEL_DELIMITER, TokenType.OPCODE, TokenType.OPERAND, TokenType.DELIMITER,
-         TokenType.DELIMITER, TokenType.OPERAND, TokenType.DELIMITER],
-        [TokenType.OPCODE, TokenType.OPERAND, TokenType.DELIMITER, TokenType.DELIMITER, TokenType.OPERAND,
-         TokenType.DELIMITER, TokenType.OPERAND, TokenType.DELIMITER],
-        [TokenType.LABEL_NUMERIC, TokenType.LABEL_DELIMITER, TokenType.OPCODE, TokenType.OPERAND, TokenType.DELIMITER,
-         TokenType.OPERAND]
+        [TokenType.LABEL_SYMBOLIC, TokenType.LABEL_DELIMITER, TokenType.OPCODE, TokenType.DELIMITER, TokenType.OPERAND,
+         TokenType.DELIMITER, TokenType.DELIMITER, TokenType.OPERAND],
+        [TokenType.OPCODE, TokenType.DELIMITER, TokenType.OPERAND, TokenType.DELIMITER, TokenType.OPERAND,
+         TokenType.DELIMITER, TokenType.DELIMITER, TokenType.OPERAND],
+        [TokenType.LABEL_NUMERIC, TokenType.LABEL_DELIMITER, TokenType.OPCODE, TokenType.DELIMITER, TokenType.OPERAND,
+         TokenType.DELIMITER, TokenType.OPERAND, TokenType.DELIMITER, TokenType.DELIMITER, TokenType.OPERAND]
     ]
 
     print("creating testfile:", filename)
@@ -139,7 +145,7 @@ def _test():
     # Print out result
     if verbose_out:
         for line in resulting_tokens:
-            print([_.file_index_start for _ in line])
+            print([_.str_col for _ in line])
             for token in line:
                 print(token.text.ljust(10), "=>", str(token.t_type)[10:])
             print("\n")

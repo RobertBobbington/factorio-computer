@@ -2,7 +2,6 @@
 
 
 import integer_literal as int_l
-import registers
 from exceptions import show_syntax_error, show_warning_one_line
 from instruction import Instruction
 from opcode_map import opcodes
@@ -12,26 +11,17 @@ from operand_type import OperandType
 def inst_to_signals(instructions):
     const_comb_signals = list()
 
-    # Warning checks, check if SP is written to / initialized before using push or pop
-    sp_written = False
-    opcodes_ordered = list(opcodes)  # opcodes is ordered dict
-    alu_opcodes = opcodes_ordered[opcodes_ordered.index("ALU"):opcodes_ordered.index("XOR")]
-
     for inst in instructions:
         assert isinstance(inst, Instruction)
         opcode = inst.opcode.text
         if opcode.upper() not in opcodes:
             show_syntax_error("Unknown opcode {}".format(opcode), inst.opcode)
 
-        if opcode.upper() == "LOAD" or opcode.upper() in alu_opcodes:
-            if inst.operands[0].text == "SP":
-                sp_written = True
-        elif opcode.upper() in ["PUSH", "POP"] and not sp_written:
-            show_warning_one_line(opcode.upper() + " used before stack pointer initialized. Undefined behavior.", inst.opcode)
-            sp_written = True  # Only show one warning
+        control_signals = opcodes[opcode.upper()]().signals
+        encoding = opcodes[opcode.upper()]().encoding
 
-        control_signals, encoding = opcodes[opcode.upper()]()
         instruction_signals = iterate_operands(inst, control_signals, encoding)
+        instruction_signals["copper-ore"] = inst.pc_adr
 
         const_comb_signals.append(instruction_signals)
 
@@ -56,41 +46,48 @@ def get_signals_by_operand(operand, operand_type_w_signals):
     operand_dict = dict()
     operand_type = operand_type_w_signals[0]
     signal_dict = operand_type_w_signals[1]
+
     if operand_type == OperandType.IMMEDIATE:
         val = immediate_from_operand(operand)
         operand_dict.update(replace_val_in_dict(signal_dict, val))
-    elif operand_type == OperandType.REGISTER:
-        val = register_from_operand(operand)
+    elif operand_type == OperandType.WRITE_RAM:
+        val = ram_from_operand(operand)
         operand_dict.update(replace_val_in_dict(signal_dict, val))
-    elif operand_type in [OperandType.REG_OR_IMM, OperandType.REG_OR_LABEL]:
-        # label is now a value, so same logic as register / imm
-        # Must see if operand has register or value
+    elif operand_type in [OperandType.RAM_OR_IMM, OperandType.RAM_OR_LABEL]:
+        # label is now a value, so same logic as ram / imm
+        # Must see if operand has ram or value
         last_signal_dict = operand_type_w_signals[2]
         if int_l.is_number_or_literal(operand.text):
             val = immediate_from_operand(operand)
             operand_dict.update(replace_val_in_dict(last_signal_dict, val))
         else:
-            val = register_from_operand(operand)
+            val = ram_from_operand(operand)
             operand_dict.update(replace_val_in_dict(signal_dict, val))
-    elif operand_type == OperandType.REG_OR_IMM_OR_BOTH:
+    elif operand_type == OperandType.RAM_OR_IMM_OR_BOTH:
         # operand is a list, check length
         last_signal_dict = operand_type_w_signals[2]
+
+        if not isinstance(operand, list):
+            operand = [operand]
+
         if len(operand) == 2:
             # both reg and imm
-            reg = register_from_operand(operand[0])
+            ram = ram_from_operand(operand[0])
             imm = immediate_from_operand(operand[1])
-            operand_dict.update(replace_val_in_dict(signal_dict, reg))
+            operand_dict.update(replace_val_in_dict(signal_dict, ram))
             operand_dict.update(replace_val_in_dict(last_signal_dict, imm))
         elif len(operand) == 1:
-            # must check if operand is register or immediate value
+            # convert single entry list to token
             if int_l.is_number_or_literal(operand[0].text):
                 val = immediate_from_operand(operand[0])
                 operand_dict.update(replace_val_in_dict(last_signal_dict, val))
             else:
-                val = register_from_operand(operand[0])
+                val = ram_from_operand(operand[0])
                 operand_dict.update(replace_val_in_dict(signal_dict, val))
         else:
             raise Exception("Unknown error: Extracted bracket operand has no length")
+            # must check if operand is ram or immediate value
+
     return operand_dict
 
 
@@ -105,11 +102,11 @@ def immediate_from_operand(operand):
     return num
 
 
-def register_from_operand(operand):
+def ram_from_operand(operand):
     val = operand.text
-    if val.upper() not in registers.register_dict:
-        show_syntax_error("Unknown register " + val, operand)
-    return registers.register_dict[val.upper()]
+    if not(val.startswith("$")):
+        show_syntax_error("Memory must be referenced with $ " + val, operand)
+    return int_l.to_number_or_literal(val[1:])
 
 
 def replace_val_in_dict(sym_d, val):

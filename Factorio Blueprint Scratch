@@ -1,0 +1,31 @@
+
+
+pipelining opcodes:
+if force_padding: PC+ inst_length, 
+
+
+Phase 0:
+
+Startpoint at spaceship assemblers. This is grid 1, coord 0.
+Problem discription:
+- Need to locate a place to place Brain
+    - Needs to be not on resources or water
+    - Needs to have correct coordiant and grid number set
+- Need to constuct all basic stuctures while no proper resource transportaion exists
+    - Option one: Logisic bots
+        - Pros:
+            - Already have infrastructure in place
+            - Simple to implement
+        - Cons:
+            - Don't want to use logistic bots
+            - Need to do the same search for resouces and 75% of the block assignment anyway
+    - Option two: Build a Phase 0 belt setup that will be removed for the phase one setup.
+        - Pros:
+            - Can use already existing mining belt blocks with some adjustments
+        - Cons:
+            - Need to be removed for the Phase 1 Belt Grid... though all Phase 0 grids will likely have to be removed
+
+
+Phase Zero Logistic Bots:
+    - Place Block 1 - Spaceship assemblers to make circuit 1
+    - 
