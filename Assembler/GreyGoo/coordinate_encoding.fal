@@ -1,40 +1,43 @@
-STOR 2, 45
-STOR 3, -33
+#def OUT_block_coordinates
+
+
+STOR 1, 45
+STOR 2, -33
 STOR 4, 0
-PC $1
+PC $6
 B encode_coord
 HLT
+STOR 1, 0
 STOR 2, 0
-STOR 3, 0
 HLT
-PC $1
+PC $6
 B decode_coord
 
 ; ENCODE_COORDINATES FUNCTION
-; return PC: $1
-; inputs:    $2 <-- x
-;            $3 <-- y
-; outputs:   $4
+; return PC: $6
+; inputs:    $1 <-- x
+;            $2 <-- y
+; outputs:   OUT_block_coordinates
 B 9f
 encode_coord:
-ADD $2, $2, 0x3fff
-ADD $3, $3, 0x3fff
-SAL $4, $2, 15
-ADD $4, $4, $3
-B $1
+ADD OUT_block_coordinates, $1, 0x3fff
+SAL OUT_block_coordinates, OUT_block_coordinates, 15
+ADD OUT_block_coordinates, OUT_block_coordinates, $2
+ADD OUT_block_coordinates, OUT_block_coordinates, 0x3fff
+B $6
 9:
 
 ; DECODE_COORDINATES FUNCTION
-; return PC: $1
-; inputs:    $4
-; outputs:   $2 <-- x
-;            $3 <-- y
+; return PC: $6
+; inputs:    IN_block_coordinates
+; outputs:   $1 <-- x
+;            $2 <-- y
 B 9f
 decode_coord:
-SAR $2, $4, 15
-AND $3, $4, 0x7fff
+SAR $1, IN_block_coordinates, 15
+AND $2, IN_block_coordinates, 0x7fff
+SUB $1, $1, 0x3fff
 SUB $2, $2, 0x3fff
-SUB $3, $3, 0x3fff
-B $1
+B $6
 9:
 HLT

@@ -1,8 +1,7 @@
 ; Factorio Pyanodon Greygoo Program
-; Version 0.01
-;
-;
-;
+; Phase 0.2 Spiral Search Program
+; Version 0.02
+; This Phase O program tries a G3 sized spiral search pattern, in a G2 size increment, for a viable start location.
 
 ; Definitions of the memory addresses of the data inputs for the program
 #def OUT_scanner_x $1025
@@ -34,12 +33,12 @@
 ; Constants
 #def grid_s1 24
 #def grid_s2 48
+#def grid_s3 96
 
 
 
 ;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-STOR 4, 11          ; M[4] is minimum block distance to a clear block
-STOR 10, 2          ; M[10] number of sequential good blocks required
+STOR 4, 1           ; M[4] Segment length
 STOR 11, 0          ; M[11] x origin of scan
 STOR 12, 0          ; M[12] y origin of scan
 
@@ -49,104 +48,53 @@ BN start
 CMP 0, IN_construction_bots_used
 BN start
 
-ADD OUT_scanner_height, grid_s2, 0
-ADD OUT_scanner_width, grid_s2, 0
-ADD OUT_scanner_x, 0, 0
-ADD OUT_scanner_y, 0, 0
+ADD OUT_scanner_height, grid_s3, 0
+ADD OUT_scanner_width, grid_s3, 0
+MUL OUT_scanner_x, grid_s2, 1
+MUL OUT_scanner_y, 0, 1
+
+ADD OUT_scanner_x, OUT_scanner_x, grid_s1
+ADD OUT_scanner_y, OUT_scanner_y, grid_s1
 
 ;Scan in all 4 directions for clear spaces
 MUL $1, grid_s2, 1 ; i vector component
 MUL $2, grid_s2, 0 ; j vector component
-STOR 3, 0           ; Block counter
-STOR 5, 0           ; M[5] Number of rotations
+STOR 3, 0           ; Position in Segment Length
 STOR 6, 0           ; M[6] Temporary working variable
-STOR 7, 0           ; M[7] i-best, direction vector of best block
-STOR 8, 0           ; M[8] j-best,
-STOR 9, 0           ; M[9] number of sequential good blocks found
-
-
 
 scan_loop:
-CMP 4, $5
-BZ scan_end
 ADD $3, $3, 1
 ADD OUT_scanner_x, OUT_scanner_x, $1
 ADD OUT_scanner_y, OUT_scanner_y, $2
-CMP $3, $4          ; if (grid counter == 10), rotate
-; Add check to see if no good blocks have been found
-BZ scan_rotate
 AND $-1, IN_resources, water
 BZ 1f
-B scan_rotate
+B 2f
 1:
 AND $-1, IN_resources, unscanned
 BZ 1f
-B scan_rotate
 1:
 CMP 10000, IN_total_mineable
-BN 1f
-B 2f
-1:
-CMP IN_block_num, 2
+BN 2f
+B scan_end
+2:
+CMP $3, $4
 BZ scan_rotate
 B scan_loop
-2:
 
-ADD $9, $9, 1
-CMP $9, $10
-HLT
-BN scan_loop
-STOR 4, $3
-STOR 7, $1
-STOR 8, $2
 scan_rotate:
-;HLT
-ADD OUT_scanner_x, $11, 0
-ADD OUT_scanner_y, $12, 0
 MUL $6, $2, -1     ; Rotate [i,j] direction vector
 MUL $2, $1, 1
 ADD $1, $6, 0
 STOR 3, 0          ; M[3] = 0
-ADD $5, $5, 1      ; M[5]++, rotation
-STOR 9, 0
+CMP $2, 0
+BZ 1f
+B scan_loop
+1:
+ADD $4, $4, 1
 B scan_loop
 scan_end:
-
 HLT
-CMP IN_accumulator_charge, 100
-BN scan_end
-CMP 0, IN_construction_bots_used
-BN scan_end
-CMP IN_block_num, 2
-BZ build_P1_computation_block
-ADD $3, $3, 1
-ADD OUT_scanner_x, OUT_scanner_x, $7
-ADD OUT_scanner_y, OUT_scanner_y, $8
-CMP $4, $3
-BZ build_solar
-ADD OUT_construct_bp, 1, 0
-;HLT
-B scan_end
-build_solar:
-DIV $1, OUT_scanner_x, grid_s1
-DIV $2, OUT_scanner_y, grid_s1
-ADD OUT_block_num, 2, 0
-PC $6 ;NOT TRIGGERED FOR SOME REASON
-B encode_coord
-ADD OUT_construct_bp, 2, 0
-STOR 11, OUT_scanner_x
-STOR 12, OUT_scanner_y
-
-STOR 4, 11          ; M[4] is minimum block distance to a clear block
-STOR 10, 2          ; M[10] number of sequential good blocks required
-STOR 11, 0          ; M[11] x origin of scan
-STOR 12, 0          ; M[12] y origin of scan
-HLT
-B start
-build_P1_computation_block:
-
-HLT
-
+;~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ; ENCODE_COORDINATES FUNCTION
 ; return PC: $6
 ; inputs:    $1 <-- x

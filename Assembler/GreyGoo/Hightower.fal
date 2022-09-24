@@ -1,0 +1,154 @@
+; Hightower's Algorithm
+; Phase 0.3 Pathfind to G3 Empty plot
+; Version 0.01
+; Blah blah pathfinding. Finds a path from a to b using line segements
+
+; First need to design a line definition:
+;   Lines will be defined by the lowest value (most negative) point, a x or y point, a bit that determines
+;   whether the line is horizontal or vertical, and 2 bits that determine the direction of expansion or whether
+;   the line is a stop/boarder line.
+;   Given that a memory cell consists of a signed 32 bit integer, the memory cell can be divided as follows:
+;   [2 bits unused][2 bits expansion/stop][1 bit orientation][9 bits - x coord][9 bits - y coord][9 bits - xy co-ord]
+;   [00][EE][R][xxxxxxxxx][yyyyyyyyy][xyxyxyxyx]
+;   This gives each line a maximum expansion distance of 512 units... which is (should be) way more than is needed
+;   (though this will have to be zeroed at 256 = 0 to allow for negative numbers..)
+
+
+
+
+; Standard Definitions
+
+; Definitions of the memory addresses of the data inputs for the program
+#def OUT_scanner_x $1025
+#def OUT_scanner_y $1026
+#def OUT_scanner_height $1027
+#def OUT_scanner_width $1028
+
+#def OUT_rotation $1029
+#def OUT_construct_bp $1030
+#def OUT_block_coordinates $1031
+#def OUT_block_num $1032
+
+; Definitions of the memory addresses of the data outputs for the program
+#def IN_resources $2049
+#def IN_total_mineable $2050
+#def IN_construction_bots_used $2051
+#def IN_accumulator_charge $2052
+
+#def IN_block_coordinates $2053
+#def IN_block_num $2054
+#def IN_block_identity $2055
+#def IN_block_size $2056
+
+; Resource Masks
+#def water      0b00000000000000000000000000000001
+#def unscanned  0b00000000000000000000000000000010
+#def stone      0b00000000000000000000000000000100
+
+; Constants
+#def grid_s1 24
+#def grid_s2 48
+#def grid_s3 96
+
+
+; Memory Organization
+; M[1]          temp variable
+; M[2] = 0      Path counter
+; M[3] = 2x     grid data is every 2 bit within array
+; M[4] = y+4    Array starts at memory index 4
+; M[5-18]       Array storing the 14x14 grid in 2 bit segments
+;   Array Bit designation:
+;       first bit;  block assigned
+;       second bit; path pattern
+;   Therefore:
+;       00          empty unassigned block
+;       (0,1)1      assigned path designation
+;       10          not meaningful under current schema, so use as source and destination point designator
+
+
+; Initialization
+; Need to approximately center the source and destination points in grid... No just center on
+; the origin block at (7,7) as the destination block and set the empty g3 block as source blocks
+
+; Center OUT_scanner on top left G1 square of found empty g3 block
+SUB OUT_scanner_x, OUT_scanner_x, grid_s1
+SUB OUT_scanner_y, OUT_scanner_y, grid_s1
+
+; Get Position in G1 increments
+DIV $1, OUT_scanner_x, grid_s1
+DIV $2, OUT_scanner_y, grid_s1
+
+; Set to array coordinates. (0,0) in mem is at (-7, -7) on the map
+ADD $1, $1, 7
+ADD $2, $2, 7
+
+; Set origin block
+SUB $1, $1, 4
+MUL $1, $1, 2
+SAL $1, 0b10101010, $1
+
+ADD $2, $2, 4
+STOR ($2, 0), $1
+STOR ($2, 1), $1
+STOR ($2, 2), $1
+STOR ($2, 3), $1
+
+; init counter and x and y array indices
+STOR 2, 0   ; path counter
+STOR 3, 0   ; x array index
+STOR 4, 4   ; y array index
+
+:array_scan_loop
+; Load x,y grid locations' bits
+LOAD $1, $4
+SAR $1, $1, $3
+MOD $1, $1, 2
+
+; Check if grid is an empty square
+CMP $1, 0
+BZ array_scan_end_cycle
+
+; Check for source or origin block. These blocks only matter if found in the adjacent search
+CMP $1, 3
+BZ array_scan_end_cycle
+
+; Check if grid matches current loop search number --> int($2/2)
+SUB $1, $1, 1
+BZ 1f
+DIV $-1, $2, -2
+BN grid_match
+B array_scan_end_cycle
+1:
+DIV $-1, $2, -2
+BZ grid_match
+B array_scan_end_cycle
+
+; CHECK NEIGHBOURS LOGIC HERE
+
+:grid_match
+CURRENTLY WORKING HERE
+
+;CMP $2, 0   ; If first iteration, then this is the origin block
+
+
+:array_scan_end_cycle
+ADD $3, $3, 2
+DIV $-1, $3, -28
+BZ 1f
+ADD $3, 0, 0
+ADD $4, $4, 1
+
+;  Check if array scan is complete
+DIV $-1, $4, -14
+BZ 1f
+
+CMP 0, $2   ; If first iteration, add destination block
+BN 2f
+ADD $11, $11, 0b10100000000000
+ADD $12, $12, 0b10100000000000
+2:
+ADD $2, $2, 1
+:1
+B array_scan_loop
+:scan_loop_end
+; Trace back path and build connector blocks and G3 computation Grid at source

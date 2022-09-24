@@ -1,0 +1,11 @@
+Block ID# | Block Description
+1   Standard Solar Block
+2   Memory Block North
+3   Memory Block East
+4   Memory Block South
+5   Memory Block West
+6   P0 PROM
+7   P0 Computation Block
+#   P1 Computation Block
+#   Mining ProtodBlock
+#   P1 Crashsite Assembler Block

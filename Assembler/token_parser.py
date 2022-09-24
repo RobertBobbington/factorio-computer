@@ -228,6 +228,7 @@ def token_parser(tokens):
                         label_target = lb.find_forward_label(numeric_labels, int(op[0]), i)
                 except AsmSyntaxError as e:
                     show_syntax_error(e.args[0], operand)
+                print(label_target.inst_index)
                 operand.text = str(instructions[label_target.inst_index].pc_adr)
                 label_target.was_referenced = True
         # print(i, ": ", inst.opcode.text)
